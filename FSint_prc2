@@ -1,0 +1,159 @@
+store.js
+
+import { configureStore } from '@reduxjs/toolkit'
+import cartReducer from './features/cartSlice'
+
+export const store = configureStore({
+  reducer: {
+    cart: cartReducer
+  }
+})
+
+
+features.js
+
+import { createSlice } from '@reduxjs/toolkit'
+
+const cartSlice = createSlice({
+  name: 'cart',
+  initialState: {
+    items: []
+  },
+  reducers: {
+    addToCart: (state, action) => {
+      const item = action.payload
+      const existing = state.items.find(i => i.id === item.id)
+      if (existing) {
+        existing.quantity += 1
+      } else {
+        state.items.push({ ...item, quantity: 1 })
+      }
+    },
+    removeFromCart: (state, action) => {
+      state.items = state.items.filter(i => i.id !== action.payload)
+    },
+    clearCart: (state) => {
+      state.items = []
+    }
+  }
+})
+
+export const { addToCart, removeFromCart, clearCart } = cartSlice.actions
+export default cartSlice.reducer
+
+
+
+ProductList.js
+
+import React from 'react'
+import { useDispatch } from 'react-redux'
+import { addToCart } from '../features/cartSlice'
+
+const products = [
+  { id: 1, name: 'Laptop', price: 1200 },
+  { id: 2, name: 'Mouse', price: 25 },
+  { id: 3, name: 'Keyboard', price: 45 }
+]
+
+export default function ProductList(){
+  const dispatch = useDispatch()
+  return (
+    <div style={{display:'flex',gap:20,justifyContent:'center',flexWrap:'wrap',marginTop:20}}>
+      {products.map(p=>(
+        <div key={p.id} style={{background:'#fff',borderRadius:10,boxShadow:'0 2px 6px rgba(0,0,0,0.1)',padding:20,width:220,textAlign:'center'}}>
+          <h3>{p.name}</h3>
+          <p>Price: ${p.price}</p>
+          <button 
+            onClick={()=>dispatch(addToCart(p))}
+            style={{background:'#28a745',color:'#fff',border:'none',padding:'8px 12px',borderRadius:6,cursor:'pointer'}}>
+            Add to Cart
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+
+Cart.js
+
+import React from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { removeFromCart, clearCart } from '../features/cartSlice'
+
+export default function Cart(){
+  const { items } = useSelector(state => state.cart)
+  const dispatch = useDispatch()
+  const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+  return (
+    <div style={{marginTop:40,textAlign:'center'}}>
+      <h2>Your Cart</h2>
+      {items.length === 0 ? (
+        <p>Cart is empty</p>
+      ) : (
+        <div>
+          {items.map(i=>(
+            <div key={i.id} style={{marginBottom:10}}>
+              {i.name} x {i.quantity} = ${i.price * i.quantity}
+              <button 
+                onClick={()=>dispatch(removeFromCart(i.id))}
+                style={{marginLeft:10,background:'#dc3545',color:'#fff',border:'none',padding:'4px 8px',borderRadius:4,cursor:'pointer'}}>
+                Remove
+              </button>
+            </div>
+          ))}
+          <h3>Total: ${total}</h3>
+          <button 
+            onClick={()=>dispatch(clearCart())}
+            style={{background:'#007bff',color:'#fff',border:'none',padding:'8px 12px',borderRadius:6,cursor:'pointer'}}>
+            Clear Cart
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+
+App.js
+
+import React from 'react'
+import ProductList from './components/ProductList'
+import Cart from './components/Cart'
+
+export default function App(){
+  return (
+    <div style={{fontFamily:'Arial, sans-serif',padding:20,background:'#f8f9fa',minHeight:'100vh'}}>
+      <h1 style={{textAlign:'center'}}>Redux Toolkit Cart</h1>
+      <ProductList />
+      <Cart />
+    </div>
+  )
+}
+
+
+index.js
+
+import React from 'react'
+import { createRoot } from 'react-dom/client'
+import { Provider } from 'react-redux'
+import { store } from './store'
+import App from './App'
+import './index.css'
+
+createRoot(document.getElementById('root')).render(
+  <Provider store={store}>
+    <App />
+  </Provider>
+)
+
+
+index.css
+
+
+html,body,#root{
+  height:100%;
+  margin:0;
+  padding:0;
+}
