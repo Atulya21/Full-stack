@@ -1,0 +1,70 @@
+import express from "express";
+import jwt from "jsonwebtoken";
+import bodyParser from "body-parser";
+
+const app = express();
+app.use(bodyParser.json());
+const SECRET_KEY = "mysecretkey";
+
+app.post("/login", (req, res) => {
+  const { username, password, role } = req.body;
+  if (
+    (username === "adminuser" && password === "admin123" && role === "admin") ||
+    (username === "moderator" && password === "mod123" && role === "moderator") ||
+    (username === "testuser" && password === "user123" && role === "user")
+  ) {
+    const token = jwt.sign({ user: { id: 1, username, role } }, SECRET_KEY, { expiresIn: "1h" });
+    res.json({ token });
+  } else {
+    res.status(401).json({ message: "Invalid credentials" });
+  }
+});
+
+function verifyToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) return res.status(401).json({ message: "Token missing" });
+  jwt.verify(token, SECRET_KEY, (err, decoded) => {
+    if (err) return res.status(403).json({ message: "Invalid token" });
+    req.user = decoded.user;
+    next();
+  });
+}
+
+function authorizeRoles(...roles) {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: "Access denied: insufficient role" });
+    }
+    next();
+  };
+}
+
+app.get("/admin-dashboard", verifyToken, authorizeRoles("admin"), (req, res) => {
+  res.json({
+    message: "Welcome to the Admin dashboard.",
+    user: req.user,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 3600,
+  });
+});
+
+app.get("/moderator-panel", verifyToken, authorizeRoles("moderator"), (req, res) => {
+  res.json({
+    message: "Welcome to the Moderator panel.",
+    user: req.user,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 3600,
+  });
+});
+
+app.get("/user-profile", verifyToken, authorizeRoles("user", "admin", "moderator"), (req, res) => {
+  res.json({
+    message: "Welcome to your profile dashboard.",
+    user: req.user,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 3600,
+  });
+});
+
+app.listen(3000, () => console.log("Server running on port 3000"));
